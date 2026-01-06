@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Parking App{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <nav class="bg-blue-600 p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center text-white">
+            <a href="/" class="font-bold text-xl">🚗 RVCE Parking</a>
+            <div>
+                {% if get_jwt_identity() %}
+                    <span class="mr-4">Welcome!</span>
+                    <a href="{{ url_for('auth.logout') }}" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="px-3 hover:text-blue-200">Login</a>
+                    <a href="{{ url_for('auth.register') }}" class="px-3 hover:text-blue-200">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto mt-4 px-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="p-4 mb-4 rounded {{ 'bg-red-100 text-red-700' if category == 'error' else 'bg-green-100 text-green-700' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="container mx-auto p-4">
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+</html>

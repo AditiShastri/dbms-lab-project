@@ -1,0 +1,25 @@
+# --------------------
+# Python junk
+# --------------------
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# --------------------
+# Runtime / instance data
+# --------------------
+instance/
+
+# --------------------
+# Data & debug artifacts
+# --------------------
+*.csv
+*.jpg
+*.jpeg
+
+# --------------------
+# Templates exclusions
+# --------------------
+templates/parking/
+#static
+static/

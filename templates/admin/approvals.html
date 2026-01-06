@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Approval Queue - Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-7xl mt-8 px-4">
+    
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">📋 Vehicle Approval Queue</h1>
+            <p class="text-gray-500 text-sm">Review documents carefully before approving.</p>
+        </div>
+        <a href="{{ url_for('admin.dashboard') }}" class="text-blue-600 hover:underline">← Back to Dashboard</a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+        
+        {% if pending %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-800 text-white text-sm uppercase tracking-wider">
+                        <th class="p-4 font-semibold">Applicant Details</th>
+                        <th class="p-4 font-semibold">Vehicle Info</th>
+                        <th class="p-4 font-semibold">Documents (Click to View)</th>
+                        <th class="p-4 font-semibold text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for item in pending %}
+                    <tr class="hover:bg-blue-50 transition group">
+                        
+                        <td class="p-4 align-top">
+                            <div class="font-bold text-gray-900 text-lg">{{ item.user_name }}</div>
+                            <div class="text-sm text-gray-600">
+                                <span class="font-semibold text-blue-600">{{ item.user_dept }}</span> Dept
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">ID: {{ item.user_usn }}</div>
+                            <div class="text-xs text-gray-400">{{ item.user_email }}</div>
+                        </td>
+
+                        <td class="p-4 align-top">
+                            <div class="bg-gray-100 border-2 border-gray-300 rounded px-3 py-1 inline-block font-mono font-bold text-gray-800 tracking-widest text-lg">
+                                {{ item.license_plate }}
+                            </div>
+                            <div class="mt-2 text-sm text-gray-600 flex items-center gap-2">
+                                {% if item.type == '4-Wheeler' %}
+                                    🚗 Car
+                                {% else %}
+                                    🛵 Bike
+                                {% endif %}
+                            </div>
+                            <div class="text-xs text-gray-400 mt-1">DL No: {{ item.dl_number }}</div>
+                        </td>
+
+                        <td class="p-4 align-top">
+                            <div class="flex flex-col gap-2">
+                                {% if item.dl_file %}
+                                <a href="{{ url_for('static', filename='uploads/' + item.dl_file) }}" target="_blank"
+                                   class="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 hover:bg-blue-100 transition text-sm font-semibold">
+                                    📄 Driving License
+                                    <span class="text-xs opacity-50">↗</span>
+                                </a>
+                                {% else %}
+                                <span class="text-red-400 text-xs italic">Missing DL</span>
+                                {% endif %}
+
+                                {% if item.rc_file %}
+                                <a href="{{ url_for('static', filename='uploads/' + item.rc_file) }}" target="_blank"
+                                   class="flex items-center gap-2 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg border border-purple-200 hover:bg-purple-100 transition text-sm font-semibold">
+                                    🚗 RC Book
+                                    <span class="text-xs opacity-50">↗</span>
+                                </a>
+                                {% else %}
+                                <span class="text-red-400 text-xs italic">Missing RC</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <td class="p-4 align-middle text-center">
+                            <div class="flex flex-col gap-2 justify-center items-center">
+                                <a href="{{ url_for('admin.approve_vehicle', plate=item.license_plate) }}" 
+                                   class="w-32 bg-green-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-green-700 transition flex items-center justify-center gap-2">
+                                   ✓ Approve
+                                </a>
+                                <a href="{{ url_for('admin.reject_vehicle', plate=item.license_plate) }}" 
+                                   class="w-32 bg-red-100 text-red-600 px-4 py-2 rounded-lg font-bold border border-red-200 hover:bg-red-200 transition flex items-center justify-center gap-2">
+                                   ✕ Reject
+                                </a>
+                            </div>
+                        </td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <div class="p-16 text-center">
+                <div class="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 text-4xl">
+                    ✅
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">All caught up!</h3>
+                <p class="text-gray-500 mt-2">There are no pending vehicle requests at the moment.</p>
+                <a href="{{ url_for('admin.dashboard') }}" class="mt-6 inline-block text-blue-600 font-bold hover:underline">
+                    Return to Dashboard
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

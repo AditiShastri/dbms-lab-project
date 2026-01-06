@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Analytics - RVCE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+
+    <nav class="bg-blue-700 text-white p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="{{ url_for('user.dashboard') }}" class="flex items-center gap-2 font-bold hover:underline">
+                <span>←</span> Back to Dashboard
+            </a>
+            <h1 class="text-lg font-black uppercase tracking-widest">Usage Analytics</h1>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+        
+        <div class="mb-8">
+            <h2 class="text-3xl font-extrabold text-gray-900">Analytics Overview</h2>
+            <p class="text-gray-500">Insights and parking patterns for <strong>{{ user.name }}</strong></p>
+        </div>
+
+        {% if stats %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div class="text-blue-600 text-xs font-black uppercase mb-2">Total Sessions</div>
+                <div class="text-4xl font-black text-gray-800">{{ stats.sessions }}</div>
+                <div class="mt-2 text-xs text-gray-400">Lifetime parkings</div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div class="text-green-600 text-xs font-black uppercase mb-2">Total Time</div>
+                <div class="text-4xl font-black text-gray-800">{{ stats.hours }}<span class="text-lg font-medium">hrs</span></div>
+                <div class="mt-2 text-xs text-gray-400">Total duration on campus</div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div class="text-purple-600 text-xs font-black uppercase mb-2">Avg. Session</div>
+                <div class="text-4xl font-black text-gray-800">{{ stats.avg_duration }}<span class="text-lg font-medium">hrs</span></div>
+                <div class="mt-2 text-xs text-gray-400">Average time per visit</div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div class="text-orange-600 text-xs font-black uppercase mb-2">Favorite Lot</div>
+                <div class="text-xl font-black text-gray-800 truncate">{{ stats.favorite }}</div>
+                <div class="mt-2 text-xs text-gray-400">Most visited location</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-gray-800 mb-6 italic">Parking Distribution</h3>
+                <canvas id="analyticsChart" style="max-height: 300px;"></canvas>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-gray-800 mb-6 italic">Vehicle Breakdown</h3>
+                <div class="space-y-4">
+                    {% for v in user.vehicles %}
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <div>
+                            <p class="font-mono font-bold text-gray-800">{{ v.license_plate }}</p>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">{{ v.model }}</p>
+                        </div>
+                        <div class="text-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                                <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7h-3v7h3.11a2.5 2.5 0 014.89 0H18a1 1 0 001-1V7a1 1 0 00-1-1h-3V7z" />
+                            </svg>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+        {% else %}
+        <div class="bg-white p-20 rounded-3xl shadow-sm border border-dashed border-gray-300 text-center">
+            <div class="text-6xl mb-4">📊</div>
+            <h3 class="text-xl font-bold text-gray-800">No Data Available</h3>
+            <p class="text-gray-500 max-w-sm mx-auto mt-2">We couldn't find any parking history for your vehicles. Once you start parking on campus, your trends will appear here.</p>
+            <a href="{{ url_for('user.dashboard') }}" class="mt-6 inline-block bg-blue-600 text-white px-8 py-3 rounded-full font-bold">Go to Dashboard</a>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <script>
+        {% if stats %}
+        const ctx = document.getElementById('analyticsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Total Sessions', 'Total Hours'],
+                datasets: [{
+                    data: [{{ stats.sessions }}, {{ stats.hours }}],
+                    backgroundColor: ['#3b82f6', '#10b981'],
+                    hoverOffset: 10,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { usePointStyle: true, padding: 20 }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

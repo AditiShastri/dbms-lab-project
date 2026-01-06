@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Support Inbox{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-6xl mt-8 px-4">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-3xl font-bold text-gray-800">📥 Support Inbox</h2>
+        <a href="{{ url_for('admin.dashboard') }}" class="text-blue-600 hover:underline">← Back to Dashboard</a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
+        {% if messages %}
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-gray-800 text-white">
+                    <tr>
+                        <th class="p-4">Sender</th>
+                        <th class="p-4 w-1/2">Message</th>
+                        <th class="p-4">Time</th>
+                        <th class="p-4 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for msg in messages %}
+                    <tr class="hover:bg-gray-50 transition {{ 'bg-blue-50' if msg.status == 'unread' else '' }}">
+                        <td class="p-4">
+                            <div class="font-bold text-gray-900">{{ msg.sender_email }}</div>
+                            {% if msg.status == 'replied' %}
+                                <span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded border border-green-200">Replied</span>
+                            {% elif msg.status == 'read' %}
+                                <span class="text-xs text-gray-400 border px-2 rounded">Read</span>
+                            {% else %}
+                                <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded blink">New</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4 text-gray-700 text-sm">{{ msg.message }}</td>
+                        <td class="p-4 text-xs text-gray-500">{{ msg.created_at.strftime('%d %b, %H:%M') }}</td>
+                        <td class="p-4 text-center flex justify-center gap-2">
+                            <button onclick="openReplyModal('{{ msg.msg_id }}', '{{ msg.sender_email }}')" 
+                                    class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 shadow-sm flex items-center gap-1">
+                                ↩️ Reply
+                            </button>
+                            
+                            {% if msg.status == 'unread' %}
+                            <a href="{{ url_for('admin.mark_read', msg_id=msg.msg_id) }}" 
+                               class="bg-gray-200 text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-300 border">
+                                ✔ Read
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="p-12 text-center text-gray-400">
+                <p class="text-xl">📭 Inbox is empty</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="replyModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-[500px] relative">
+        <h3 class="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+            📧 Reply to <span id="recipientEmail" class="text-blue-600"></span>
+        </h3>
+        
+        <form action="{{ url_for('admin.reply_message') }}" method="POST">
+            <input type="hidden" name="msg_id" id="msgIdInput">
+            
+            <label class="block text-gray-700 text-sm font-bold mb-2">Your Response</label>
+            <textarea name="reply_text" rows="5" required placeholder="Type your reply here..." 
+                      class="w-full border p-3 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50"></textarea>
+            
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('replyModal').classList.add('hidden')" 
+                        class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg font-bold">Cancel</button>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow">
+                    Send Email 🚀
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openReplyModal(id, email) {
+        document.getElementById('msgIdInput').value = id;
+        document.getElementById('recipientEmail').innerText = email;
+        document.getElementById('replyModal').classList.remove('hidden');
+    }
+</script>
+{% endblock %}

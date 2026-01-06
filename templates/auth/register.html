@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Register - RVCE Parking{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg mt-10 relative">
+    <h2 class="text-3xl font-bold text-center mb-2 text-gray-800">Create Account</h2>
+    
+    
+    <form action="{{ url_for('auth.register') }}" method="POST" id="regForm" novalidate>
+        
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-1 text-sm">Full Name <span class="text-red-500">*</span></label>
+            <input type="text" id="name" name="name" required 
+                   value="{{ form_data.name if form_data else '' }}" 
+                   class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-colors"
+                   oninput="validateField('name')">
+            <small id="error-name" class="text-red-500 text-xs hidden"></small>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-1 text-sm">I am a...</label>
+            <select name="role" id="role" class="w-full px-3 py-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="student" {% if form_data and form_data.role == 'student' %}selected{% endif %}>Student</option>
+                <option value="faculty" {% if form_data and form_data.role == 'faculty' %}selected{% endif %}>Faculty</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-1 text-sm">ID Card No. <span id="usnReq" class="text-red-500">*</span></label>
+            <input type="text" id="usn" name="usn" placeholder="RVCE23BIS116" required 
+                   value="{{ form_data.usn if form_data else '' }}" 
+                   class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 uppercase transition-colors"
+                   oninput="validateField('usn')">
+            <small id="error-usn" class="text-red-500 text-xs hidden"></small>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-1 text-sm">RVCE Email <span class="text-red-500">*</span></label>
+            <input type="email" id="email" name="email" placeholder="name.dept23@rvce.edu.in" required 
+                   value="{{ form_data.email if form_data else '' }}" 
+                   class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-colors"
+                   oninput="validateField('email')">
+            <small id="error-email" class="text-red-500 text-xs hidden"></small>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-1 text-sm">Phone (For Emergency Contact) <span class="text-red-500">*</span></label>
+            <input type="text" id="phone" name="phone" placeholder="9988776655" maxlength="10" required 
+                   value="{{ form_data.phone if form_data else '' }}" 
+                   class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-colors"
+                   oninput="validateField('phone')">
+            <small id="error-phone" class="text-red-500 text-xs hidden"></small>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-1 text-sm">Department <span class="text-red-500">*</span></label>
+            <select name="department" id="dept" required class="w-full px-3 py-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="" disabled selected>Select Dept</option>
+                {% for d in ['ISE', 'CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'AERO', 'CHEM', 'IEM', 'EIE', 'ETE'] %}
+                    <option value="{{ d }}" {% if form_data and form_data.dept == d %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-1 text-sm">Password <span class="text-red-500">*</span></label>
+            <input type="password" id="password" name="password" required 
+                   class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-colors"
+                   oninput="validateField('password')">
+            <small id="error-password" class="text-red-500 text-xs hidden"></small>
+        </div>
+
+        <button type="submit" id="submitBtn" disabled
+                class="w-full bg-gray-400 text-white py-3 rounded font-bold transition shadow-md cursor-not-allowed">
+            Verify & Register
+        </button>
+    </form>
+
+    <div class="mt-6 border-t pt-4 text-center">
+        <p class="text-sm text-gray-600 mb-2">Registration failed?</p>
+        <button onclick="openChatModal()" 
+                class="text-blue-600 font-bold hover:underline flex items-center justify-center w-full">
+            💬 Chat with Admin / Report Issue
+        </button>
+    </div>
+</div>
+
+<div id="chatModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+    <div class="relative p-6 border w-96 shadow-2xl rounded-xl bg-white">
+        <h3 class="text-xl font-bold mb-2 text-gray-800">Contact Admin</h3>
+        
+        <form action="{{ url_for('auth.contact_admin') }}" method="POST">
+            <input type="hidden" name="contact_email" id="hiddenEmail">
+            
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-r">
+                <p class="text-sm text-blue-700">
+                    We will reply to:<br>
+                    <span id="displayEmail" class="font-bold text-gray-800 text-lg break-all"></span>
+                </p>
+            </div>
+            
+            <label class="block text-gray-700 text-sm font-bold mb-2">Message / Issue</label>
+            <textarea name="message" rows="4" required placeholder="e.g., My name is misspelled in the CSV..." 
+                      class="w-full border p-2 mb-4 rounded bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+            
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="document.getElementById('chatModal').classList.add('hidden')" 
+                        class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 font-bold">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold shadow">Send Message</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // --- 1. HANDLE ROLE CHANGE (Faculty = No USN) ---
+    const roleSelect = document.getElementById('role');
+    const usnInput = document.getElementById('usn');
+    const usnStar = document.getElementById('usnReq');
+
+    function updateRoleUI() {
+        if (roleSelect.value === 'faculty') {
+            usnInput.value = '';
+            usnInput.disabled = true;
+            usnInput.classList.add('bg-gray-200', 'cursor-not-allowed', 'opacity-50');
+            usnInput.classList.remove('border-red-500', 'bg-red-50'); // clear errors
+            usnInput.placeholder = "Not Required for Faculty";
+            usnStar.classList.add('hidden');
+            document.getElementById('error-usn').classList.add('hidden');
+        } else {
+            usnInput.disabled = false;
+            usnInput.classList.remove('bg-gray-200', 'cursor-not-allowed', 'opacity-50');
+            usnInput.placeholder = "RVCE23BIS116";
+            usnStar.classList.remove('hidden');
+        }
+        checkAllFields();
+    }
+
+    roleSelect.addEventListener('change', updateRoleUI);
+
+    // --- 2. VALIDATION LOGIC ---
+    const rules = {
+        name: (val) => val.length > 2 || "Name must be at least 3 chars",
+        
+        usn: (val) => {
+            // Skip check if faculty
+            if (roleSelect.value === 'faculty') return true;
+            const pattern = /^RVCE\d{2}[A-Z]{2,3}\d{3}$/;
+            return pattern.test(val.toUpperCase()) || "Invalid USN Format (e.g., RVCE23BIS116)";
+        },
+
+        email: (val) => val.endsWith('@rvce.edu.in') || "Must end with @rvce.edu.in",
+
+        phone: (val) => /^[6-9]\d{9}$/.test(val) || "Invalid Phone Number (10 digits)",
+
+        password: (val) => {
+            const pattern = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
+            return pattern.test(val) || "Must be 8+ chars with 1 number & 1 special char";
+        }
+    };
+
+    function validateField(fieldId) {
+        // Skip validation if field is disabled (like USN for faculty)
+        const input = document.getElementById(fieldId);
+        if (input.disabled) return;
+
+        const errorMsg = document.getElementById('error-' + fieldId);
+        const val = input.value.trim();
+        const result = rules[fieldId](val);
+
+        if (result === true) {
+            input.classList.remove('border-red-500', 'bg-red-50');
+            input.classList.add('border-green-500', 'bg-green-50');
+            errorMsg.classList.add('hidden');
+        } else {
+            input.classList.remove('border-green-500', 'bg-green-50');
+            input.classList.add('border-red-500', 'bg-red-50');
+            errorMsg.classList.remove('hidden');
+            errorMsg.innerText = result;
+        }
+        checkAllFields();
+    }
+
+    function checkAllFields() {
+        const ids = ['name', 'usn', 'email', 'phone', 'password'];
+        let allValid = true;
+        
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el.disabled) { // Only check active fields
+                const val = el.value;
+                if (rules[id](val) !== true) allValid = false;
+            }
+        });
+
+        const btn = document.getElementById('submitBtn');
+        if (allValid) {
+            btn.disabled = false;
+            btn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            btn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'cursor-pointer');
+        } else {
+            btn.disabled = true;
+            btn.classList.add('bg-gray-400', 'cursor-not-allowed');
+            btn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'cursor-pointer');
+        }
+    }
+    
+    // --- 3. CHAT MODAL ---
+    function openChatModal() {
+        const mainEmail = document.getElementById('email').value.trim();
+        if (!mainEmail) {
+            alert("Please enter your Email in the form first.");
+            document.getElementById('email').focus();
+            return;
+        }
+        document.getElementById('displayEmail').innerText = mainEmail;
+        document.getElementById('hiddenEmail').value = mainEmail;
+        document.getElementById('chatModal').classList.remove('hidden');
+    }
+
+    // Initialize on load (to handle pre-filled data or resets)
+    window.onload = function() {
+        updateRoleUI();
+        if(document.getElementById('email').value) {
+            ['name', 'usn', 'email', 'phone'].forEach(id => validateField(id));
+        }
+    }
+</script>
+{% endblock %}

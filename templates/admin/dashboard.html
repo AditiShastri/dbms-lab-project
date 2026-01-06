@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-7xl mt-8 px-4 mb-20">
+    
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b pb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+            <p class="text-gray-500">Welcome, System Administrator</p>
+        </div>
+        
+        <div class="flex gap-4 mt-4 md:mt-0">
+            <div class="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg text-center">
+                <span class="block text-2xl font-bold">{{ lots|sum(attribute='number_of_spots') }}</span>
+                <span class="text-xs uppercase font-bold">Total Spots</span>
+            </div>
+
+            <div class="bg-red-100 text-red-800 px-4 py-2 rounded-lg text-center">
+                <span class="block text-2xl font-bold">
+                    {% set ns = namespace(occupied=0) %}
+                    {% for lot in lots %}
+                        {% for spot in lot.spots %}
+                            {% if spot.status == 'occupied' %}
+                                {% set ns.occupied = ns.occupied + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                    {{ ns.occupied }}
+                </span>
+                <span class="text-xs uppercase font-bold">Occupied</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        
+        <a href="{{ url_for('admin.approvals') }}" 
+           class="flex items-center justify-between bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-400 transition-all group">
+            <div>
+                <h3 class="text-xl font-bold text-gray-800 group-hover:text-blue-600">📋 Approval Queue</h3>
+                <p class="text-sm text-gray-500">Review pending vehicle requests</p>
+            </div>
+            <span class="bg-blue-100 text-blue-600 text-2xl p-3 rounded-full">➜</span>
+        </a>
+
+        <a href="{{ url_for('admin.view_messages') }}" 
+           class="flex items-center justify-between bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-purple-400 transition-all group">
+            <div>
+                <h3 class="text-xl font-bold text-gray-800 group-hover:text-purple-600">💬 Support Messages</h3>
+                <p class="text-sm text-gray-500">Read inquiries from students</p>
+            </div>
+            <span class="bg-purple-100 text-purple-600 text-2xl p-3 rounded-full">✉️</span>
+        </a>
+
+        <a href="#" class="flex items-center justify-between bg-gray-50 p-6 rounded-xl border border-gray-200 opacity-60 cursor-not-allowed">
+            <div>
+                <h3 class="text-xl font-bold text-gray-500">👥 Manage Users</h3>
+                <p class="text-sm text-gray-400">Feature coming soon</p>
+            </div>
+            <span class="text-gray-400 text-2xl p-3">🔒</span>
+        </a>
+    </div>
+
+    <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+        🚗 Live Parking Status
+        <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Real-time</span>
+    </h2>
+
+    {% for lot in lots %}
+    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden mb-6">
+        
+        <div onclick="toggleLot('lot-{{ lot.lot_id }}')" 
+             class="bg-gray-50 p-4 border-b flex justify-between items-center cursor-pointer hover:bg-gray-100 transition select-none">
+            <div class="flex items-center gap-3">
+                <span id="icon-lot-{{ lot.lot_id }}" class="transform transition-transform duration-300 text-gray-400 text-xl">▼</span>
+                <h2 class="text-xl font-bold text-gray-700">{{ lot.location }}</h2>
+            </div>
+            <span class="text-sm text-gray-500 bg-white px-3 py-1 rounded border">{{ lot.spots|length }} Spots</span>
+        </div>
+
+        <div id="lot-{{ lot.lot_id }}" class="p-6 transition-all duration-300 origin-top">
+            <div class="grid grid-cols-5 md:grid-cols-10 gap-2">
+                {% for spot in spot_sorter(lot.spots) %}
+                    
+                    {% if spot.status == 'occupied' %}
+                    <div onclick="showDetails(event, '{{ lot.lot_id }}', '{{ spot.spot_number }}')"
+                         class="h-10 rounded flex items-center justify-center text-xs font-bold cursor-pointer bg-red-100 text-red-700 border border-red-300 hover:bg-red-200 shadow-sm transition transform hover:scale-105"
+                         title="Occupied - Click for Details">
+                        {{ spot.spot_number }} 🚗
+                    </div>
+
+                    {% else %}
+                    <form action="{{ url_for('admin.toggle_faculty', lot_id=lot.lot_id, spot_number=spot.spot_number) }}" method="POST">
+                        <button type="submit" 
+                                onclick="event.stopPropagation()"
+                                class="w-full h-10 rounded flex items-center justify-center text-xs font-bold border transition-colors shadow-sm
+                                {% if spot.reserved_for_faculty %}
+                                    bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200
+                                {% else %}
+                                    bg-green-100 text-green-700 border-green-300 hover:bg-green-200
+                                {% endif %}"
+                                title="{% if spot.reserved_for_faculty %}Reserved for Faculty{% else %}Open for All{% endif %}">
+                            {{ spot.spot_number }}
+                            {% if spot.reserved_for_faculty %}🎓{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="infoModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 transition-opacity backdrop-blur-sm">
+    <div class="bg-white p-6 rounded-xl shadow-2xl w-96 transform transition-all scale-100 border border-gray-200">
+        <div class="flex justify-between items-center border-b pb-3 mb-4">
+            <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                🅿️ Spot Details
+            </h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-red-500 font-bold text-xl">&times;</button>
+        </div>
+        
+        <div id="modalContent" class="space-y-4">
+            </div>
+
+        <button onclick="closeModal()" class="mt-6 w-full bg-gray-900 text-white py-2 rounded-lg hover:bg-black transition font-bold shadow-lg">
+            Close Panel
+        </button>
+    </div>
+</div>
+
+<script>
+    // 1. COLLAPSE LOGIC
+    function toggleLot(id) {
+        const el = document.getElementById(id);
+        const icon = document.getElementById('icon-' + id);
+        
+        if (el.classList.contains('hidden')) {
+            el.classList.remove('hidden');
+            icon.style.transform = 'rotate(0deg)';
+        } else {
+            el.classList.add('hidden');
+            icon.style.transform = 'rotate(-90deg)';
+        }
+    }
+
+    // 2. MODAL LOGIC
+    async function showDetails(event, lotId, spotNum) {
+        event.stopPropagation(); // Prevent toggling the lot when clicking a spot
+        
+        const modal = document.getElementById('infoModal');
+        const content = document.getElementById('modalContent');
+        
+        modal.classList.remove('hidden'); 
+        content.innerHTML = '<div class="flex flex-col items-center justify-center py-6"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div><p class="text-gray-400 mt-2 text-sm">Fetching vehicle data...</p></div>';
+
+        try {
+            const res = await fetch(`/api/admin/spot_details/${lotId}/${spotNum}`);
+            const data = await res.json();
+
+            if(data.status === 'success') {
+                content.innerHTML = `
+                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border">
+                        <span class="text-gray-500 text-xs uppercase tracking-wider">Spot Number</span>
+                        <span class="font-bold text-3xl text-gray-800">#${data.spot}</span>
+                    </div>
+                    
+                    <div class="space-y-3 mt-4">
+                        <div>
+                            <span class="block text-xs text-gray-400 uppercase font-bold">Owner</span>
+                            <span class="block text-lg font-bold text-blue-600">${data.owner}</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <span class="block text-xs text-gray-400 uppercase font-bold">Role</span>
+                                <span class="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-bold mt-1">${data.role}</span>
+                            </div>
+                            <div>
+                                <span class="block text-xs text-gray-400 uppercase font-bold">Phone</span>
+                                <span class="block text-sm font-mono text-gray-700 mt-1">${data.phone}</span>
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-3 mt-2">
+                             <span class="block text-xs text-gray-400 uppercase font-bold mb-1">Vehicle Info</span>
+                             <div class="flex justify-between items-center">
+                                <span class="font-mono font-bold text-xl text-gray-800 tracking-widest border px-2 rounded bg-gray-50">${data.plate}</span>
+                                <span class="text-xs text-green-600 font-bold flex items-center gap-1">
+                                    🕒 Entered: ${data.entry_time}
+                                </span>
+                             </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `<div class="text-center py-4"><p class="text-red-500 font-bold text-lg">⚠️ Error</p><p class="text-gray-500">${data.msg}</p></div>`;
+            }
+        } catch(e) {
+            content.innerHTML = '<p class="text-red-500 text-center font-bold">Connection Failed</p>';
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('infoModal').classList.add('hidden');
+    }
+</script>
+{% endblock %}

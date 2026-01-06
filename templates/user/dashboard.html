@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - RVCE Parking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <nav class="bg-blue-600 text-white shadow-lg p-4 mb-6">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <span>🚗</span> RVCE Parking
+            </h1>
+            <div class="flex items-center gap-4">
+                <a href="{{ url_for('user.analytics') }}" class="text-sm font-bold hover:underline">View Analytics</a>
+                <span class="text-sm border-l border-blue-400 pl-4 uppercase font-bold text-blue-100">{{user.name|upper}} | {{ user.role }} Account</span>
+                <a href="{{ url_for('auth.logout') }}" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-3 gap-6 pb-12">
+        
+        <div class="lg:col-span-2 space-y-6">
+            
+            <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-500">
+                <h2 class="text-lg font-bold text-gray-700 mb-4">Current Parking Status</h2>
+                {% if active_txn %}
+                <div class="flex items-center justify-between bg-blue-50 p-6 rounded-lg border border-blue-100">
+                    <div>
+                        <p class="text-xs text-blue-600 font-black uppercase tracking-wider mb-1">Active Parking Session</p>
+                        <p class="text-3xl font-mono font-black text-gray-800">{{ active_txn.license_plate }}</p>
+                        <p class="text-gray-600 mt-1 font-medium">📍 {{ current_lot_name }} | <span class="text-blue-700">Spot #{{ active_txn.spot_number }}</span></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-400 font-bold uppercase">Entered At</p>
+                        <p class="text-xl font-bold text-gray-700">{{ active_txn.entry_time.strftime('%I:%M %p') }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-10 border-2 border-dashed border-gray-200 rounded-xl">
+                    <div class="text-5xl mb-3 opacity-20">🅿️</div>
+                    <p class="text-gray-400 font-medium">No active session found.</p>
+                    <p class="text-xs text-gray-300">Scan your plate at the gate to start parking.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-700">My Vehicles</h2>
+                </div>
+
+                <div class="space-y-3">
+                    {% for v in vehicles %}
+                    <div class="flex items-center justify-between p-4 border rounded-xl bg-green-50 border-green-100">
+                        <div class="flex items-center gap-4">
+                            <div class="bg-white p-2 rounded-lg shadow-sm">🚗</div>
+                            <div>
+                                <p class="font-mono font-bold text-lg text-gray-800">{{ v.license_plate }}</p>
+                                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{{ v.model }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-[10px] font-black bg-green-500 text-white px-2 py-1 rounded shadow-sm">APPROVED</span>
+                            <button onclick="deleteVehicle('{{ v.license_plate }}')" class="text-gray-300 hover:text-red-500 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% for p in pending %}
+                    <div class="flex items-center justify-between p-4 border rounded-xl {% if p.status == 'rejected' %}bg-red-50 border-red-100{% else %}bg-gray-50 border-gray-200 opacity-70{% endif %}">
+                        <div class="flex items-center gap-4">
+                            <div class="bg-white p-2 rounded-lg shadow-sm opacity-50">🕒</div>
+                            <div>
+                                <p class="font-mono font-bold text-lg text-gray-500">{{ p.license_plate }}</p>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase">{{ p.model }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            {% if p.status == 'pending' %}
+                            <span class="text-[10px] font-black bg-yellow-400 text-white px-2 py-1 rounded uppercase">Pending Approval</span>
+                            {% else %}
+                            <span class="text-[10px] font-black bg-red-500 text-white px-2 py-1 rounded uppercase">Rejected</span>
+                            {% endif %}
+                            <button onclick="deleteVehicle('{{ p.license_plate }}')" class="text-gray-300 hover:text-red-500 transition">🗑️</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-600">
+                <h2 class="text-lg font-bold text-gray-700 mb-4 italic">Register New Vehicle</h2>
+                <form action="{{ url_for('user.register_vehicle') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-black text-gray-400 uppercase mb-1">License Plate</label>
+                            <input type="text" name="license_plate" placeholder="KA01AB1234" required 
+                                   pattern="^[A-Z]{2}\d{2}[A-Z]{1,2}\d{4}$"
+                                   class="w-full p-2 bg-gray-50 border rounded font-mono font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-gray-400 uppercase mb-1">Vehicle Model</label>
+                            <input type="text" name="model" placeholder="Swift, Activa, etc." required 
+                                   class="w-full p-2 bg-gray-50 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-black text-gray-400 uppercase mb-1">DL Number</label>
+                            <input type="text" name="dl_number" required placeholder="Full Driving License Number"
+                                   class="w-full p-2 bg-gray-50 border rounded font-mono focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-gray-400 uppercase mb-1">Upload DL (PDF/IMG)</label>
+                            <input type="file" name="dl_document" accept="image/*,.pdf" required class="text-xs text-gray-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-gray-400 uppercase mb-1">Upload RC (PDF/IMG)</label>
+                            <input type="file" name="rc_document" accept="image/*,.pdf" required class="text-xs text-gray-500">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-lg transition shadow-md uppercase tracking-widest text-sm">
+                        Submit Documents for Verification
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            
+            <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-orange-400">
+                <h2 class="text-lg font-bold text-gray-700 mb-1">Parking Preferences</h2>
+                <p class="text-[10px] text-gray-400 font-bold uppercase mb-4">Drag to reorder your priority</p>
+                <div id="sortable-lots" class="space-y-2">
+                    {% for lot in lots %}
+                    <div data-id="{{ lot.lot_id }}" class="flex items-center gap-3 p-3 border rounded-lg bg-white hover:bg-orange-50 hover:border-orange-200 transition cursor-move group">
+                        <span class="text-gray-300 font-bold group-hover:text-orange-400">☰</span>
+                        <div class="flex-1">
+                            <p class="text-sm font-bold text-gray-700">{{ lot.location }}</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-gray-300">#{{ loop.index }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <p id="save-hint" class="text-[10px] text-center text-green-500 mt-4 font-bold hidden">✅ Preferences Updated!</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-lg font-bold text-gray-700 mb-4">Recent History</h2>
+                <div class="space-y-4">
+                    {% for txn in history %}
+                    <div class="text-sm border-b pb-3 border-gray-50">
+                        <div class="flex justify-between font-bold">
+                            <span class="font-mono text-gray-800">{{ txn.license_plate }}</span>
+                            <span class="text-blue-600 font-black">Spot #{{ txn.spot_number }}</span>
+                        </div>
+                        <div class="flex justify-between text-gray-400 text-[10px] font-bold uppercase mt-1">
+                            <span>{{ txn.entry_time.strftime('%b %d, %I:%M %p') }}</span>
+                            <span>Lot ID: {{ txn.lot_id }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if not history %}
+                    <p class="text-center text-gray-300 text-xs py-4">No recent history.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. DELETE VEHICLE HANDLER
+        async function deleteVehicle(plate) {
+            if(!confirm(`Are you sure you want to remove ${plate}?`)) return;
+            try {
+                const response = await fetch(`/user/delete_vehicle/${plate}`, { method: 'POST' });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    location.reload();
+                } else {
+                    alert(result.msg);
+                }
+            } catch (err) { alert("Server error."); }
+        }
+
+        // 2. DRAGGABLE PREFERENCES HANDLER
+        const el = document.getElementById('sortable-lots');
+        const hint = document.getElementById('save-hint');
+
+        Sortable.create(el, {
+            animation: 150,
+            ghostClass: 'bg-orange-100',
+            onEnd: async function() {
+                // Get the new order of lot_ids
+                const order = Array.from(el.children).map(item => item.dataset.id);
+                
+                try {
+                    const response = await fetch('/user/update_preferences', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ order: order })
+                    });
+                    
+                    if(response.ok) {
+                        hint.classList.remove('hidden');
+                        setTimeout(() => hint.classList.add('hidden'), 2000);
+                    }
+                } catch (err) { console.error("Failed to save preferences"); }
+            }
+        });
+    </script>
+</body>
+</html>

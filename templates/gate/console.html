@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}Gate Console{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-900 text-white p-6">
+    
+    <div class="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
+        <div>
+            <h1 class="text-3xl font-bold text-blue-400 tracking-wider">GATE CONTROL</h1>
+            <p class="text-gray-400 text-sm">Automated Entry/Exit System</p>
+        </div>
+        <div class="flex gap-4">
+            <button onclick="switchMode('entry')" id="tabEntry" class="px-6 py-2 rounded-lg font-bold transition-all bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]">
+                ENTRY MODE
+            </button>
+            <button onclick="switchMode('exit')" id="tabExit" class="px-6 py-2 rounded-lg font-bold transition-all bg-gray-700 text-gray-300 hover:bg-gray-600">
+                EXIT MODE
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <div class="space-y-6">
+            
+            <div id="panelEntry" class="space-y-6 transition-all duration-300">
+                <div class="bg-black rounded-2xl border-2 border-gray-700 overflow-hidden relative group">
+                    <div class="absolute top-2 left-2 bg-blue-600 px-2 py-1 text-xs font-bold rounded z-10">STEP 1: PLATE</div>
+                    <img src="http://192.168.29.88:8080/video" class="w-full h-64 object-cover opacity-80 group-hover:opacity-100 transition-opacity">
+                    
+                    <div class="p-4 bg-gray-800 flex gap-2">
+                        <button onclick="entryStep1()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
+                            SCAN PLATE
+                        </button>
+                        <input type="text" id="manPlate" placeholder="Manual Override" class="bg-gray-700 text-white px-3 rounded border border-gray-600 w-32 text-center uppercase">
+                    </div>
+                </div>
+
+                <div id="boxCam2" class="bg-black rounded-2xl border-2 border-gray-700 overflow-hidden relative opacity-50 pointer-events-none transition-all">
+                    <div class="absolute top-2 left-2 bg-purple-600 px-2 py-1 text-xs font-bold rounded z-10">STEP 2: ID CARD</div>
+                    <img src="http://192.168.29.88:8080/video" class="w-full h-64 object-cover">
+                    
+                    <div class="p-4 bg-gray-800 flex gap-2">
+                        <button id="btnStep2" onclick="entryStep2()" class="flex-1 bg-gray-700 text-gray-400 font-bold py-3 rounded-lg cursor-not-allowed transition-colors">
+                            VERIFY ID
+                        </button>
+                        <input type="text" id="manIDEntry" disabled placeholder="ID Manual" class="bg-gray-700 text-white px-3 rounded border border-gray-600 w-32 text-center uppercase">
+                    </div>
+                </div>
+            </div>
+
+            <div id="panelExit" class="hidden">
+                <div class="bg-black rounded-2xl border-2 border-red-900 overflow-hidden relative">
+                    <div class="absolute top-2 left-2 bg-red-600 px-2 py-1 text-xs font-bold rounded z-10">EXIT CAMERA</div>
+                    <img src="http://192.168.29.88:8080/video" class="w-full h-80 object-cover">
+                    
+                    <div class="p-4 bg-gray-800 flex gap-2">
+                        <button onclick="exitScan()" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+                            SCAN PLATE TO EXIT
+                        </button>
+                        <input type="text" id="manIDExit" placeholder="Manual Plate" class="bg-gray-700 text-white px-3 rounded border border-gray-600 w-32 text-center uppercase">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="bg-gray-800 rounded-2xl p-8 border border-gray-700 flex flex-col items-center justify-center min-h-[500px] relative overflow-hidden">
+            
+            <div id="statusIcon" class="text-8xl mb-4 animate-bounce">🛡️</div>
+            
+            <h2 id="statusMain" class="text-4xl font-bold text-white mb-2 text-center tracking-widest">READY</h2>
+            
+            <p id="statusMsg" class="text-gray-400 text-center text-lg max-w-md mb-8 min-h-[3rem]">
+                Select a mode to begin operations.
+            </p>
+
+            <div id="allocBox" class="hidden w-full max-w-sm bg-gray-900 rounded-xl p-6 border border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)] transform transition-all scale-100">
+                <div class="flex justify-between items-end border-b border-gray-700 pb-2 mb-4">
+                    <span class="text-gray-500 text-xs uppercase">Assigned Slot</span>
+                    <span id="resSpot" class="text-4xl font-bold text-green-400 font-mono">A-12</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400">Location</span>
+                    <span id="resLot" class="font-bold text-white">Main Block</span>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-800 text-center">
+                    <span class="text-xs text-green-600 font-bold uppercase tracking-widest animate-pulse">Gate Opening...</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    let session = {}; // Stores temp data between Step 1 and Step 2
+
+    // 1. SWITCH MODES (Clean Reset)
+    function switchMode(mode) {
+        resetUI(); // <--- CRITICAL: WIPES EVERYTHING OLD
+
+        const pEntry = document.getElementById('panelEntry');
+        const pExit = document.getElementById('panelExit');
+        const tEntry = document.getElementById('tabEntry');
+        const tExit = document.getElementById('tabExit');
+
+        if (mode === 'entry') {
+            pEntry.classList.remove('hidden');
+            pExit.classList.add('hidden');
+            
+            // Style Tabs
+            tEntry.classList.add('bg-blue-600', 'text-white', 'shadow-[0_0_15px_rgba(37,99,235,0.5)]');
+            tEntry.classList.remove('bg-gray-700', 'text-gray-300');
+            tExit.classList.remove('bg-red-600', 'text-white', 'shadow-[0_0_15px_rgba(220,38,38,0.5)]');
+            tExit.classList.add('bg-gray-700', 'text-gray-300');
+            
+            setStatus("ENTRY READY", "🛡️", "text-blue-400");
+        } else {
+            pEntry.classList.add('hidden');
+            pExit.classList.remove('hidden');
+            
+            // Style Tabs
+            tExit.classList.add('bg-red-600', 'text-white', 'shadow-[0_0_15px_rgba(220,38,38,0.5)]');
+            tExit.classList.remove('bg-gray-700', 'text-gray-300');
+            tEntry.classList.remove('bg-blue-600', 'text-white', 'shadow-[0_0_15px_rgba(37,99,235,0.5)]');
+            tEntry.classList.add('bg-gray-700', 'text-gray-300');
+
+            setStatus("EXIT READY", "👋", "text-red-400");
+        }
+    }
+
+    // 2. UI RESET FUNCTION (The Lag Killer)
+    function resetUI() {
+        document.getElementById('statusMsg').innerText = "Waiting for scan...";
+        document.getElementById('allocBox').classList.add('hidden');
+        document.getElementById('manPlate').value = '';
+        document.getElementById('manIDEntry').value = '';
+        document.getElementById('manIDExit').value = '';
+        
+        // Reset Status Text Colors
+        const main = document.getElementById('statusMain');
+        main.className = "text-4xl font-bold mb-2 text-center tracking-widest text-white"; // Reset to white
+
+        // Reset Step 2 State
+        document.getElementById('boxCam2').classList.add('opacity-50', 'pointer-events-none');
+        document.getElementById('btnStep2').disabled = true;
+        document.getElementById('btnStep2').classList.add('bg-gray-700', 'cursor-not-allowed');
+        document.getElementById('btnStep2').classList.remove('bg-purple-600');
+        document.getElementById('manIDEntry').disabled = true;
+        
+        session = {}; // Clear memory
+    }
+
+    function setStatus(title, icon, colorClass) {
+        document.getElementById('statusMain').innerText = title;
+        document.getElementById('statusIcon').innerText = icon;
+        
+        // Remove old colors, add new
+        const main = document.getElementById('statusMain');
+        main.className = `text-4xl font-bold mb-2 text-center tracking-widest ${colorClass}`;
+    }
+
+    // --- ENTRY STEP 1: PLATE ---
+    async function entryStep1() {
+        resetUI(); // Clear old "Goodbye" msgs immediately
+        setStatus("SCANNING...", "📷", "text-yellow-500");
+        
+        const manual = document.getElementById('manPlate').value;
+
+        try {
+            const res = await fetch('/api/gate/scan_plate_entry', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ manual_plate: manual })
+            });
+            const data = await res.json();
+            
+            if(res.ok) {
+                // CASE A: FACULTY (Instant Success)
+                if (data.status === 'allowed') {
+                    setStatus("ALLOWED", "✅", "text-green-500");
+                    document.getElementById('statusMsg').innerText = data.msg;
+                    document.getElementById('resLot').innerText = data.lot;
+                    document.getElementById('resSpot').innerText = "#" + data.spot;
+                    document.getElementById('allocBox').classList.remove('hidden');
+                } 
+                // CASE B: STUDENT (Go to Step 2)
+                else {
+                    session = { plate: data.plate, usn: data.expected_usn };
+                    setStatus("VERIFY ID", "👤", "text-blue-400");
+                    document.getElementById('statusMsg').innerText = `Vehicle: ${data.plate}\nOwner: ${data.owner_name}\nPlease Scan ID Card.`;
+                    
+                    // Enable Step 2 UI
+                    document.getElementById('boxCam2').classList.remove('opacity-50', 'pointer-events-none');
+                    document.getElementById('btnStep2').disabled = false;
+                    document.getElementById('btnStep2').classList.remove('bg-gray-700', 'cursor-not-allowed');
+                    document.getElementById('btnStep2').classList.add('bg-purple-600', 'hover:bg-purple-500');
+                    document.getElementById('manIDEntry').disabled = false;
+                }
+            } else {
+                setStatus("DENIED", "⛔", "text-red-500");
+                let msg = data.msg;
+                if(data.debug_ocr) msg += `\n(Read: ${data.debug_ocr})`;
+                document.getElementById('statusMsg').innerText = msg;
+            }
+        } catch(e) {
+            setStatus("ERROR", "⚠️", "text-red-500");
+            console.error(e);
+        }
+    }
+
+    // --- ENTRY STEP 2: ID ---
+    async function entryStep2() {
+        // Don't full reset, just update status
+        setStatus("CHECKING ID...", "🔍", "text-yellow-500");
+        
+        const manual = document.getElementById('manIDEntry').value;
+
+        try {
+            const res = await fetch('/api/gate/verify_id_and_grant', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    plate: session.plate, 
+                    expected_usn: session.usn,
+                    manual_id: manual 
+                })
+            });
+            const data = await res.json();
+            
+            if(res.ok) {
+                setStatus("ALLOWED", "✅", "text-green-500");
+                document.getElementById('statusMsg').innerText = `Welcome ${data.owner}!`;
+                document.getElementById('resLot').innerText = data.lot;
+                document.getElementById('resSpot').innerText = "#" + data.spot;
+                document.getElementById('allocBox').classList.remove('hidden');
+                
+                // Disable Step 2 again to prevent double clicks
+                document.getElementById('boxCam2').classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                setStatus("DENIED", "⛔", "text-red-500");
+                let msg = data.msg;
+                if(data.debug_data) msg += `\n(Read: ${data.debug_data})`;
+                document.getElementById('statusMsg').innerText = msg;
+            }
+        } catch(e) {
+            setStatus("ERROR", "⚠️", "text-red-500");
+        }
+    }
+
+    // --- EXIT SCAN ---
+    async function exitScan() {
+        resetUI(); // Clear old msgs
+        setStatus("SCANNING...", "📤", "text-yellow-500");
+        
+        const manual = document.getElementById('manIDExit').value;
+        
+        try {
+            const res = await fetch('/api/gate/scan_exit_id', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ manual_id: manual })
+            });
+            const data = await res.json();
+            
+            if(res.ok) {
+                setStatus("GOODBYE", "👋", "text-blue-400");
+                document.getElementById('statusMsg').innerText = data.msg;
+                document.getElementById('resLot').innerText = "Session";
+                document.getElementById('resSpot').innerText = "Ended";
+                // Show a mini success box if you want, or just text
+            } else {
+                setStatus("DENIED", "⛔", "text-red-500");
+                let msg = data.msg;
+                if(data.debug) msg += `\n(Read: ${data.debug})`;
+                document.getElementById('statusMsg').innerText = msg;
+            }
+        } catch(e) {
+            setStatus("ERROR", "⚠️", "text-red-500");
+        }
+    }
+</script>
+{% endblock %}
